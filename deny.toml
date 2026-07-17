@@ -1,0 +1,27 @@
+[graph]
+all-features = true
+
+[licenses]
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "MIT",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+skip = [
+    { crate = "syn@1.0.109", reason = "required by cpe 0.1.5's legacy derive stack" },
+    { crate = "thiserror@1.0.69", reason = "required by cpe 0.1.5" },
+    { crate = "thiserror-impl@1.0.69", reason = "required by cpe 0.1.5" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
