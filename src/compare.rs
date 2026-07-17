@@ -139,7 +139,7 @@ pub enum SignalField {
 pub enum SignalKind {
     /// Canonical values matched exactly.
     Exact,
-    /// Normalized text was fuzzily similar.
+    /// Values were compatible or fuzzily similar without being exact.
     Similar,
     /// Comparable values differed.
     Different,
@@ -252,13 +252,17 @@ impl<'de> serde::Deserialize<'de> for Signal {
         }
 
         let wire = <WireSignal as serde::Deserialize>::deserialize(deserializer)?;
-        let valid_score = match wire.kind {
-            SignalKind::Exact => wire.score == Some(Score::MAX),
-            SignalKind::Similar => wire.score.is_some_and(|score| score < Score::MAX),
-            SignalKind::Different
-            | SignalKind::Missing
-            | SignalKind::Incomparable
-            | SignalKind::SameSource => wire.score.is_none(),
+        let valid_score = match (wire.field, wire.kind) {
+            (_, SignalKind::Exact) => wire.score == Some(Score::MAX),
+            (SignalField::Subject, SignalKind::Similar) => wire.score == Some(Score::MAX),
+            (_, SignalKind::Similar) => wire.score.is_some_and(|score| score < Score::MAX),
+            (
+                _,
+                SignalKind::Different
+                | SignalKind::Missing
+                | SignalKind::Incomparable
+                | SignalKind::SameSource,
+            ) => wire.score.is_none(),
         };
         if !valid_score {
             return Err(serde::de::Error::custom(
@@ -1076,10 +1080,20 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(
-            engine.compare(&left, &right).decision(),
-            Decision::Duplicate
-        );
+        let comparison = engine.compare(&left, &right);
+        assert_eq!(comparison.decision(), Decision::Duplicate);
+        assert!(comparison.signals().iter().any(|signal| {
+            signal.field() == SignalField::Subject
+                && signal.kind() == SignalKind::Similar
+                && signal.score() == Some(Score::MAX)
+        }));
+
+        #[cfg(feature = "serde")]
+        {
+            let encoded = serde_json::to_value(&comparison).unwrap();
+            let decoded: Comparison = serde_json::from_value(encoded).unwrap();
+            assert_eq!(decoded, comparison);
+        }
     }
 
     #[test]

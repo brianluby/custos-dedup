@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Install stable Rust
         run: rustup toolchain install stable --profile minimal
@@ -38,6 +40,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Install stable Rust
         run: rustup toolchain install stable --profile minimal --component rustfmt,clippy
@@ -54,6 +58,9 @@ jobs:
       - name: Run all-feature tests
         run: cargo +stable test --all-features --locked
 
+      - name: Run basic example
+        run: cargo +stable run --example basic --locked
+
       - name: Build documentation
         env:
           RUSTDOCFLAGS: -D warnings
@@ -68,6 +75,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Install Rust 1.85
         run: rustup toolchain install 1.85.0 --profile minimal

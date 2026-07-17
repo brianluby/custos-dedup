@@ -33,6 +33,7 @@ Run the complete local verification set from the repository root:
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features --locked -- -D warnings
 cargo test --all-features --locked
+cargo run --example basic --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps --locked
 cargo audit --deny warnings
 cargo deny --all-features --locked check bans licenses sources
