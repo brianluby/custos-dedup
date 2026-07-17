@@ -65,4 +65,19 @@ mod tests {
     fn similarity_is_zero_when_either_side_is_empty() {
         assert_eq!(similarity("", "finding"), 0.0);
     }
+
+    #[test]
+    fn text_normalizes_to_empty_when_no_alphanumeric_characters_remain() {
+        assert_eq!(text("!!!"), "");
+    }
+
+    #[test]
+    fn similarity_is_one_for_identical_normalized_text() {
+        assert_eq!(similarity("OpenSSL Bug", "openssl   bug"), 1.0);
+    }
+
+    #[test]
+    fn similarity_is_zero_when_normalized_text_becomes_empty() {
+        assert_eq!(similarity("!!!", "openssl bug"), 0.0);
+    }
 }

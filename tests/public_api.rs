@@ -1,6 +1,6 @@
 use custos_dedup::{
-    Candidate, Config, Decision, Deduplicator, MatchMethod, NormalizedCpe, NormalizedPurl,
-    SignalField, SignalKind,
+    Candidate, ClusterError, Config, Decision, Deduplicator, MatchMethod, NormalizedCpe,
+    NormalizedPurl, OccurrenceKey, SignalField, SignalKind,
 };
 
 fn purl_finding(
@@ -164,4 +164,63 @@ fn candidate_json_round_trip_retains_validated_state() {
     let json = serde_json::to_string(&candidate).unwrap();
     let decoded: Candidate = serde_json::from_str(&json).unwrap();
     assert_eq!(decoded, candidate);
+}
+
+#[test]
+fn cluster_correlates_cross_source_duplicates_and_tracks_stats() {
+    let left = purl_finding(
+        "scanner-a",
+        "17",
+        "repository:acme/api",
+        "CVE-2024-3094",
+        "pkg:generic/acme/widget@1.0",
+    );
+    let right = purl_finding(
+        "scanner-b",
+        "91",
+        "repository:acme/api",
+        "cve-2024-3094",
+        "pkg:generic/acme/widget@1.0",
+    );
+
+    let result = Deduplicator::default().cluster(&[left, right]).unwrap();
+
+    assert_eq!(result.clusters().len(), 1);
+    assert!(result.clusters()[0].is_duplicate());
+    assert_eq!(result.clusters()[0].members().len(), 2);
+    assert!(result.review_pairs().is_empty());
+    assert!(result.warnings().is_empty());
+    assert_eq!(result.stats().candidate_count(), 2);
+    assert_eq!(result.stats().cluster_count(), 1);
+    assert_eq!(result.stats().exact_merge_count(), 1);
+}
+
+#[test]
+fn cluster_rejects_repeated_occurrences_in_input() {
+    let candidate = purl_finding(
+        "scanner-a",
+        "17",
+        "repository:acme/api",
+        "CVE-2024-3094",
+        "pkg:generic/acme/widget@1.0",
+    );
+    let error = Deduplicator::default()
+        .cluster(&[candidate.clone(), candidate])
+        .unwrap_err();
+    assert!(matches!(error, ClusterError::DuplicateOccurrence(_)));
+}
+
+#[test]
+fn occurrence_key_string_round_trip_and_rejects_invalid_prefix() {
+    let candidate = purl_finding(
+        "scanner-a",
+        "17",
+        "repository:acme/api",
+        "CVE-2024-3094",
+        "pkg:generic/acme/widget@1.0",
+    );
+    let key = Deduplicator::default().occurrence_key(&candidate);
+    let round_tripped: OccurrenceKey = key.to_string().parse().unwrap();
+    assert_eq!(round_tripped, key);
+    assert!("corr:v1:deadbeef".parse::<OccurrenceKey>().is_err());
 }

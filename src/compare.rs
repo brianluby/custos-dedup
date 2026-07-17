@@ -1202,4 +1202,121 @@ mod tests {
         signal_json["unexpected"] = serde_json::json!(true);
         assert!(serde_json::from_value::<Signal>(signal_json).is_err());
     }
+
+    #[test]
+    fn shared_issue_alone_without_supporting_evidence_is_distinct() {
+        let engine = Deduplicator::default();
+        let left = Candidate::builder("one", "1")
+            .partition("repo:example")
+            .issue("CVE-2024-1")
+            .build()
+            .unwrap();
+        let right = Candidate::builder("two", "2")
+            .partition("repo:example")
+            .issue("CVE-2024-1")
+            .build()
+            .unwrap();
+
+        let comparison = engine.compare(&left, &right);
+        assert_eq!(comparison.decision(), Decision::Distinct);
+        assert_eq!(comparison.method(), MatchMethod::Fuzzy);
+    }
+
+    #[test]
+    fn cross_source_only_false_allows_exact_correlation_within_one_source() {
+        let engine =
+            Deduplicator::new(Config::builder().cross_source_only(false).build().unwrap());
+        let left = Candidate::builder("scanner-a", "17")
+            .partition("global")
+            .issue("CVE-2024-1")
+            .purl("pkg:generic/widget@1.0")
+            .unwrap()
+            .build()
+            .unwrap();
+        let right = Candidate::builder("scanner-a", "91")
+            .partition("global")
+            .issue("CVE-2024-1")
+            .purl("pkg:generic/widget@1.0")
+            .unwrap()
+            .build()
+            .unwrap();
+
+        let comparison = engine.compare(&left, &right);
+        assert_eq!(comparison.decision(), Decision::Duplicate);
+        assert_eq!(comparison.method(), MatchMethod::ExactCorrelation);
+    }
+
+    #[test]
+    fn cross_source_only_blocks_different_occurrences_from_the_same_source() {
+        let engine = Deduplicator::default();
+        let left = Candidate::builder("scanner-a", "17")
+            .partition("global")
+            .issue("CVE-2024-1")
+            .purl("pkg:generic/widget@1.0")
+            .unwrap()
+            .build()
+            .unwrap();
+        let right = Candidate::builder("scanner-a", "91")
+            .partition("global")
+            .issue("CVE-2024-1")
+            .purl("pkg:generic/widget@1.0")
+            .unwrap()
+            .build()
+            .unwrap();
+
+        let comparison = engine.compare(&left, &right);
+        assert_eq!(comparison.decision(), Decision::NotComparable);
+        assert_eq!(comparison.method(), MatchMethod::Blocked);
+        assert!(comparison.signals().iter().any(|signal| {
+            signal.field() == SignalField::Source && signal.kind() == SignalKind::SameSource
+        }));
+    }
+
+    #[test]
+    fn cpe_subject_detail_conflict_requires_review() {
+        let engine = Deduplicator::default();
+        let left = Candidate::builder("one", "1")
+            .partition("repo:example")
+            .issue("CVE-2024-1")
+            .cpe("cpe:2.3:a:acme:widget:1.0:beta:*:*:*:*:*:*")
+            .unwrap()
+            .build()
+            .unwrap();
+        let right = Candidate::builder("two", "2")
+            .partition("repo:example")
+            .issue("CVE-2024-1")
+            .cpe("cpe:2.3:a:acme:widget:1.0:ga:*:*:*:*:*:*")
+            .unwrap()
+            .build()
+            .unwrap();
+
+        let comparison = engine.compare(&left, &right);
+        assert_eq!(comparison.decision(), Decision::Review);
+        assert!(comparison.signals().iter().any(|signal| {
+            signal.field() == SignalField::Subject && signal.kind() == SignalKind::Different
+        }));
+    }
+
+    #[test]
+    fn strong_subject_name_similarity_enables_automatic_duplicate_without_a_structured_subject() {
+        let engine = Deduplicator::default();
+        let left = Candidate::builder("one", "1")
+            .partition("repo:example")
+            .issue("CVE-2024-1")
+            .subject_name("acme widget")
+            .title("critical finding")
+            .build()
+            .unwrap();
+        let right = Candidate::builder("two", "2")
+            .partition("repo:example")
+            .issue("CVE-2024-1")
+            .subject_name("acme widget")
+            .title("critical finding")
+            .build()
+            .unwrap();
+
+        let comparison = engine.compare(&left, &right);
+        assert_eq!(comparison.decision(), Decision::Duplicate);
+        assert_eq!(comparison.method(), MatchMethod::Fuzzy);
+    }
 }
