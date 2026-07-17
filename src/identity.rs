@@ -1764,4 +1764,50 @@ mod tests {
         assert_eq!(json, r#""pkg:pypi/django-package@1""#);
         assert_eq!(decoded, purl);
     }
+
+    #[test]
+    fn cpe_parse_rejects_unsupported_binding() {
+        assert_eq!(
+            NormalizedCpe::parse("not-a-cpe").unwrap_err(),
+            IdentityError::UnsupportedCpeBinding
+        );
+    }
+
+    #[test]
+    fn purl_parse_rejects_non_pkg_scheme() {
+        assert!(matches!(
+            NormalizedPurl::parse("not-a-purl"),
+            Err(IdentityError::InvalidPurl { .. })
+        ));
+    }
+
+    #[test]
+    fn normalized_purl_display_matches_as_str() {
+        let purl = NormalizedPurl::parse("pkg:generic/widget@1").unwrap();
+        assert_eq!(purl.to_string(), purl.as_str());
+    }
+
+    #[test]
+    fn normalized_cpe_display_matches_as_str() {
+        let cpe = NormalizedCpe::parse("cpe:2.3:a:acme:widget:1:*:*:*:*:*:*:*").unwrap();
+        assert_eq!(cpe.to_string(), cpe.as_str());
+    }
+
+    #[test]
+    fn subject_id_display_and_as_ref_agree_with_as_str() {
+        let subject = SubjectId::parse("pkg:generic/widget@1").unwrap();
+        assert_eq!(subject.to_string(), subject.as_str());
+        assert_eq!(subject.as_ref(), subject.as_str());
+    }
+
+    #[test]
+    fn subject_id_from_conversions_preserve_identity() {
+        let purl = NormalizedPurl::parse("pkg:generic/widget@1").unwrap();
+        let subject: SubjectId = purl.clone().into();
+        assert_eq!(subject.as_purl(), Some(&purl));
+
+        let cpe = NormalizedCpe::parse("cpe:2.3:a:acme:widget:1:*:*:*:*:*:*:*").unwrap();
+        let subject2: SubjectId = cpe.clone().into();
+        assert_eq!(subject2.as_cpe(), Some(&cpe));
+    }
 }

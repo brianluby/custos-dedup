@@ -649,4 +649,96 @@ mod tests {
         }"#;
         assert!(serde_json::from_str::<Origin>(origin_json).is_err());
     }
+
+    #[test]
+    fn issue_id_rejects_empty_value() {
+        assert_eq!(IssueId::new("   ").unwrap_err(), CandidateError::EmptyIssueId);
+    }
+
+    #[test]
+    fn issue_id_rejects_control_characters() {
+        assert_eq!(
+            IssueId::new("CVE-2024-1\u{0007}").unwrap_err(),
+            CandidateError::ControlCharacter { field: "issue_id" }
+        );
+    }
+
+    #[test]
+    fn build_rejects_control_character_in_title() {
+        let error = Candidate::builder("one", "17")
+            .partition("global")
+            .title("bad\u{0007}title")
+            .build()
+            .unwrap_err();
+        assert_eq!(error, CandidateError::ControlCharacter { field: "title" });
+    }
+
+    #[test]
+    fn build_rejects_blank_subject_name() {
+        let error = Candidate::builder("one", "17")
+            .partition("global")
+            .title("Finding")
+            .subject_name("   ")
+            .build()
+            .unwrap_err();
+        assert_eq!(error, CandidateError::EmptyField { field: "subject_name" });
+    }
+
+    #[test]
+    fn custom_finding_kind_rejects_blank_value() {
+        let error = Candidate::builder("one", "17")
+            .partition("global")
+            .kind(FindingKind::Other("   ".to_owned()))
+            .title("Finding")
+            .build()
+            .unwrap_err();
+        assert_eq!(error, CandidateError::EmptyField { field: "kind" });
+    }
+
+    #[test]
+    fn build_sorts_and_deduplicates_subject_ids_and_names() {
+        let candidate = Candidate::builder("one", "17")
+            .partition("global")
+            .purl("pkg:generic/widget@2")
+            .unwrap()
+            .purl("pkg:generic/widget@1")
+            .unwrap()
+            .purl("pkg:generic/widget@1")
+            .unwrap()
+            .subject_name("Zeta")
+            .subject_name("Alpha")
+            .subject_name("Zeta")
+            .build()
+            .unwrap();
+
+        assert_eq!(candidate.subject_ids().len(), 2);
+        let names = candidate
+            .subject_names()
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        assert_eq!(names, ["Alpha", "Zeta"]);
+    }
+
+    #[test]
+    fn builder_stores_optional_fields_trimmed() {
+        let candidate = Candidate::builder("one", "17")
+            .subtype(" agent ")
+            .partition("global")
+            .issue("CVE-2024-1")
+            .location(" /etc/passwd ")
+            .affected_version(" 1.2.3 ")
+            .build()
+            .unwrap();
+
+        assert_eq!(candidate.origin().subtype(), Some("agent"));
+        assert_eq!(candidate.location(), Some("/etc/passwd"));
+        assert_eq!(candidate.affected_version(), Some("1.2.3"));
+    }
+
+    #[test]
+    fn issue_id_display_matches_as_str() {
+        let issue = IssueId::new("cve-2024-1").unwrap();
+        assert_eq!(issue.to_string(), issue.as_str());
+    }
 }

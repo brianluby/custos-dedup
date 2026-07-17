@@ -933,4 +933,82 @@ mod tests {
         warning_json["OversizedBlock"]["unexpected"] = serde_json::json!(true);
         assert!(serde_json::from_value::<ClusterWarning>(warning_json).is_err());
     }
+
+    #[test]
+    fn oversized_subject_block_warns_and_keeps_exact_only() {
+        let engine = Deduplicator::new(Config::builder().max_block_size(2).build().unwrap());
+        let candidates = [
+            Candidate::builder("one", "1")
+                .partition("global")
+                .purl("pkg:generic/widget@1.0")
+                .unwrap()
+                .build()
+                .unwrap(),
+            Candidate::builder("two", "2")
+                .partition("global")
+                .purl("pkg:generic/widget@2.0")
+                .unwrap()
+                .build()
+                .unwrap(),
+            Candidate::builder("three", "3")
+                .partition("global")
+                .purl("pkg:generic/widget@3.0")
+                .unwrap()
+                .build()
+                .unwrap(),
+        ];
+
+        let result = engine.cluster(&candidates).unwrap();
+        assert_eq!(result.stats().candidate_pair_count(), 0);
+        assert_eq!(
+            result.warnings(),
+            [ClusterWarning::OversizedBlock {
+                kind: BlockKind::Subject,
+                size: 3,
+                limit: 2,
+            }]
+        );
+    }
+
+    #[test]
+    fn cluster_reports_review_pairs_for_plausible_but_unmerged_matches() {
+        let engine = Deduplicator::default();
+        let candidates = [
+            named("one", "1", "acme widget"),
+            named("two", "2", "acme widget"),
+        ];
+
+        let result = engine.cluster(&candidates).unwrap();
+        assert_eq!(result.clusters().len(), 2);
+        assert_eq!(result.review_pairs().len(), 1);
+        assert_eq!(result.review_pairs()[0].decision(), Decision::Review);
+    }
+
+    #[test]
+    fn cluster_stats_reports_expected_counts_for_a_simple_exact_merge() {
+        let candidates = [
+            Candidate::builder("one", "1")
+                .partition("global")
+                .issue("CVE-2024-1")
+                .purl("pkg:generic/widget@1.0")
+                .unwrap()
+                .build()
+                .unwrap(),
+            Candidate::builder("two", "2")
+                .partition("global")
+                .issue("CVE-2024-1")
+                .purl("pkg:generic/widget@1.0")
+                .unwrap()
+                .build()
+                .unwrap(),
+        ];
+
+        let stats = Deduplicator::default().cluster(&candidates).unwrap().stats();
+        assert_eq!(stats.candidate_count(), 2);
+        assert_eq!(stats.candidate_pair_count(), 1);
+        assert_eq!(stats.comparison_count(), 1);
+        assert_eq!(stats.exact_merge_count(), 1);
+        assert_eq!(stats.fuzzy_merge_count(), 0);
+        assert_eq!(stats.cluster_count(), 1);
+    }
 }
