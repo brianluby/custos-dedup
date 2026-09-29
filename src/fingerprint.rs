@@ -333,4 +333,72 @@ mod tests {
 
         assert_eq!(key.to_string().parse::<OccurrenceKey>().unwrap(), key);
     }
+
+    #[test]
+    fn occurrence_key_parse_rejects_wrong_prefix() {
+        let error = "corr:v1:abc".parse::<OccurrenceKey>().unwrap_err();
+        assert_eq!(
+            error,
+            KeyParseError::Prefix {
+                expected: OCCURRENCE_PREFIX
+            }
+        );
+    }
+
+    #[test]
+    fn occurrence_key_parse_rejects_wrong_digest_length() {
+        let error = format!("{OCCURRENCE_PREFIX}abc")
+            .parse::<OccurrenceKey>()
+            .unwrap_err();
+        assert_eq!(error, KeyParseError::Digest);
+    }
+
+    #[test]
+    fn occurrence_key_parse_rejects_non_hex_digest() {
+        let digest = "g".repeat(64);
+        let error = format!("{OCCURRENCE_PREFIX}{digest}")
+            .parse::<OccurrenceKey>()
+            .unwrap_err();
+        assert_eq!(error, KeyParseError::Digest);
+    }
+
+    #[test]
+    fn correlation_key_parse_rejects_occurrence_prefixed_string() {
+        let candidate = Candidate::builder("scanner", "42")
+            .partition("global")
+            .issue("CVE-2024-1")
+            .build()
+            .unwrap();
+        let key = OccurrenceKey::for_candidate(&candidate);
+        let error = key.to_string().parse::<CorrelationKey>().unwrap_err();
+        assert_eq!(
+            error,
+            KeyParseError::Prefix {
+                expected: CORRELATION_PREFIX
+            }
+        );
+    }
+
+    #[test]
+    fn correlation_key_for_issue_only_differs_from_issue_subject_key() {
+        let candidate = Candidate::builder("scanner", "42")
+            .partition("global")
+            .issue("CVE-2024-1")
+            .purl("pkg:cargo/widget@1.0.0")
+            .unwrap()
+            .build()
+            .unwrap();
+        let issue_only = CorrelationKey::for_issue_only(
+            candidate.partition(),
+            candidate.kind(),
+            &candidate.issue_ids()[0],
+        );
+        let issue_subject = CorrelationKey::for_issue_subject(
+            candidate.partition(),
+            candidate.kind(),
+            &candidate.issue_ids()[0],
+            &candidate.subject_ids()[0],
+        );
+        assert_ne!(issue_only, issue_subject);
+    }
 }

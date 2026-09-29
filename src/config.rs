@@ -312,4 +312,68 @@ mod tests {
 
         assert!(serde_json::from_value::<Config>(json).is_err());
     }
+
+    #[test]
+    fn build_rejects_score_out_of_range_for_each_threshold_field() {
+        assert_eq!(
+            Config::builder()
+                .duplicate_threshold(10_001)
+                .build()
+                .unwrap_err(),
+            ConfigError::ScoreOutOfRange {
+                field: "duplicate_threshold",
+                value: 10_001
+            }
+        );
+        assert_eq!(
+            Config::builder()
+                .review_threshold(10_001)
+                .build()
+                .unwrap_err(),
+            ConfigError::ScoreOutOfRange {
+                field: "review_threshold",
+                value: 10_001
+            }
+        );
+        assert_eq!(
+            Config::builder()
+                .subject_similarity_threshold(10_001)
+                .build()
+                .unwrap_err(),
+            ConfigError::ScoreOutOfRange {
+                field: "subject_similarity_threshold",
+                value: 10_001
+            }
+        );
+    }
+
+    #[test]
+    fn build_rejects_block_size_below_two() {
+        assert_eq!(
+            Config::builder().max_block_size(1).build().unwrap_err(),
+            ConfigError::BlockSize(1)
+        );
+    }
+
+    #[test]
+    fn builder_stores_oversized_block_policy() {
+        let config = Config::builder()
+            .oversized_block_policy(OversizedBlockPolicy::Error)
+            .build()
+            .unwrap();
+        assert_eq!(config.oversized_block_policy(), OversizedBlockPolicy::Error);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serde_round_trips_a_valid_config() {
+        let config = Config::builder()
+            .duplicate_threshold(9_000)
+            .review_threshold(7_000)
+            .build()
+            .unwrap();
+        let json = serde_json::to_value(&config).unwrap();
+        let decoded: Config = serde_json::from_value(json).unwrap();
+        assert_eq!(decoded, config);
+    }
 }
