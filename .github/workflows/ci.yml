@@ -70,7 +70,7 @@ jobs:
         run: cargo +stable package --locked
 
   msrv:
-    name: Rust 1.85
+    name: Rust 1.94
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -78,8 +78,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust 1.85
-        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Install Rust 1.94
+        run: rustup toolchain install 1.94.0 --profile minimal
 
       - name: Test all targets and features
-        run: cargo +1.85.0 test --all-targets --all-features --locked
+        run: cargo +1.94.0 test --all-targets --all-features --locked

@@ -22,7 +22,8 @@ provenance and payload.
 - Deterministic, complete-link batch clustering with bounded fuzzy blocks.
 - Optional `serde` support for the core model and result types.
 
-The minimum supported Rust version is 1.85.
+The minimum supported Rust version is 1.94. It matches Custos and is raised
+together with it.
 
 ## Quick start
 

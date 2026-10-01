@@ -175,10 +175,11 @@ fn parse_key(value: &str, prefix: &'static str) -> Result<[u8; 32], KeyParseErro
         return Err(KeyParseError::Digest);
     }
     let mut output = [0_u8; 32];
-    for (index, pair) in digest.as_bytes().chunks_exact(2).enumerate() {
-        let high = hex_nibble(pair[0]).ok_or(KeyParseError::Digest)?;
-        let low = hex_nibble(pair[1]).ok_or(KeyParseError::Digest)?;
-        output[index] = (high << 4) | low;
+    let (pairs, _) = digest.as_bytes().as_chunks::<2>();
+    for (byte, [high, low]) in output.iter_mut().zip(pairs) {
+        let high = hex_nibble(*high).ok_or(KeyParseError::Digest)?;
+        let low = hex_nibble(*low).ok_or(KeyParseError::Digest)?;
+        *byte = (high << 4) | low;
     }
     Ok(output)
 }
