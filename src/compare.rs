@@ -1224,8 +1224,7 @@ mod tests {
 
     #[test]
     fn cross_source_only_false_allows_exact_correlation_within_one_source() {
-        let engine =
-            Deduplicator::new(Config::builder().cross_source_only(false).build().unwrap());
+        let engine = Deduplicator::new(Config::builder().cross_source_only(false).build().unwrap());
         let left = Candidate::builder("scanner-a", "17")
             .partition("global")
             .issue("CVE-2024-1")

@@ -18,7 +18,7 @@ patches focused and avoid combining unrelated refactors with behavior changes.
 
 ## Local setup
 
-Install Rust 1.85 or newer with Rustfmt and Clippy. The repository keeps
+Install Rust 1.94 or newer with Rustfmt and Clippy. The repository keeps
 `Cargo.lock` so the same dependency resolution can be checked in CI.
 Install the pinned supply-chain tools with a current stable toolchain:
 
@@ -43,8 +43,8 @@ cargo package --locked
 To check the minimum supported Rust version as well:
 
 ```console
-rustup toolchain install 1.85.0 --profile minimal
-cargo +1.85.0 test --all-targets --all-features --locked
+rustup toolchain install 1.94.0 --profile minimal
+cargo +1.94.0 test --all-targets --all-features --locked
 ```
 
 ## Tests

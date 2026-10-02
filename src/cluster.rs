@@ -1003,7 +1003,10 @@ mod tests {
                 .unwrap(),
         ];
 
-        let stats = Deduplicator::default().cluster(&candidates).unwrap().stats();
+        let stats = Deduplicator::default()
+            .cluster(&candidates)
+            .unwrap()
+            .stats();
         assert_eq!(stats.candidate_count(), 2);
         assert_eq!(stats.candidate_pair_count(), 1);
         assert_eq!(stats.comparison_count(), 1);
