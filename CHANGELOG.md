@@ -9,6 +9,7 @@ Versioning.
 
 ### Changed
 
+- Raise the minimum supported Rust version to 1.94 to match Custos.
 - Reject unknown fields when deserializing structured crate values.
 - Reuse prepared occurrence and correlation keys throughout batch clustering.
 - Add repository metadata and dependency advisory, license, and source checks.

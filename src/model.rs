@@ -652,7 +652,10 @@ mod tests {
 
     #[test]
     fn issue_id_rejects_empty_value() {
-        assert_eq!(IssueId::new("   ").unwrap_err(), CandidateError::EmptyIssueId);
+        assert_eq!(
+            IssueId::new("   ").unwrap_err(),
+            CandidateError::EmptyIssueId
+        );
     }
 
     #[test]
@@ -681,7 +684,12 @@ mod tests {
             .subject_name("   ")
             .build()
             .unwrap_err();
-        assert_eq!(error, CandidateError::EmptyField { field: "subject_name" });
+        assert_eq!(
+            error,
+            CandidateError::EmptyField {
+                field: "subject_name"
+            }
+        );
     }
 
     #[test]
